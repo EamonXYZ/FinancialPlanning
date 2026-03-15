@@ -15,7 +15,8 @@ function FinancialCalculator() {
   // 房贷信息
   const [mortgageTotal, setMortgageTotal] = useState(2000000)
   const [mortgageYears, setMortgageYears] = useState(30)
-  const [monthlyMortgage, setMonthlyMortgage] = useState(10000)
+  const [mortgageRate, setMortgageRate] = useState(4.5) // 年利率
+  const [mortgageType, setMortgageType] = useState('equal_payment') // equal_payment: 等额本息, equal_principal: 等额本金
 
   // 支出明细
   const [expenseItems, setExpenseItems] = useState([
@@ -79,6 +80,49 @@ function FinancialCalculator() {
     )
   }
 
+  // 计算每月房贷
+  const calculateMonthlyMortgage = (total, rate, years, type) => {
+    const monthlyRate = rate / 100 / 12
+    const months = years * 12
+
+    if (type === 'equal_payment') {
+      // 等额本息
+      if (rate === 0) {
+        return total / months
+      }
+      return total * monthlyRate * Math.pow(1 + monthlyRate, months) / (Math.pow(1 + monthlyRate, months) - 1)
+    } else {
+      // 等额本金 - 首月还款额
+      if (rate === 0) {
+        return total / months
+      }
+      return total / months + total * monthlyRate
+    }
+  }
+
+  // 计算年度房贷
+  const calculateAnnualMortgage = (total, rate, years, type, year) => {
+    const monthlyRate = rate / 100 / 12
+    const months = years * 12
+    const startMonth = year * 12
+    let annualMortgage = 0
+
+    if (type === 'equal_payment') {
+      // 等额本息 - 每月还款相同
+      const monthlyPayment = calculateMonthlyMortgage(total, rate, years, type)
+      return Math.min(monthlyPayment * 12, total)
+    } else {
+      // 等额本金 - 每月本金相同，利息递减
+      for (let month = 0; month < 12 && startMonth + month < months; month++) {
+        const principal = total / months
+        const remaining = total - principal * (startMonth + month)
+        const interest = remaining * monthlyRate
+        annualMortgage += principal + interest
+      }
+      return annualMortgage
+    }
+  }
+
   const calculatePrediction = () => {
     const years = retirementAge - currentAge
     const predictions = []
@@ -92,11 +136,15 @@ function FinancialCalculator() {
       0
     )
 
-    // 月度净收入
+    // 计算房贷
+    const monthlyMortgage = calculateMonthlyMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType)
     const monthlyNetIncome = monthlyIncome - monthlyMortgage - totalMonthlyExpenses
 
     for (let year = 0; year <= years; year++) {
       const age = currentAge + year
+
+      // 查找该年份的收入调整
+      const yearAdjustment = yearlyAdjustments.find(adj => adj.year === year)
 
       // 工资收入（考虑增长）
       const annualSalaryIncome = monthlyIncome * 12 * Math.pow(1 + incomeGrowthRate / 100, year)
@@ -112,8 +160,8 @@ function FinancialCalculator() {
       // 房贷计算
       let annualMortgage = 0
       if (remainingMortgage > 0) {
-        annualMortgage = monthlyMortgage * 12
-        remainingMortgage = Math.max(0, remainingMortgage - (annualMortgage - remainingMortgage / mortgageYears))
+        annualMortgage = calculateAnnualMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType, year)
+        remainingMortgage = Math.max(0, remainingMortgage - annualMortgage)
       }
 
       // 投资收益（基于当前资产）
@@ -252,12 +300,25 @@ function FinancialCalculator() {
             />
           </div>
           <div className="form-group">
-            <label>每月月供（元）</label>
+            <label>房贷利率（%）</label>
             <input
               type="number"
-              value={monthlyMortgage}
-              onChange={(e) => setMonthlyMortgage(Number(e.target.value))}
+              value={mortgageRate}
+              onChange={(e) => setMortgageRate(Number(e.target.value))}
             />
+          </div>
+          <div className="form-group">
+            <label>还款方式</label>
+            <select
+              value={mortgageType}
+              onChange={(e) => setMortgageType(e.target.value)}
+            >
+              <option value="equal_payment">等额本息（每月还款相同）</option>
+              <option value="equal_principal">等额本金（本金相同，利息递减）</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>首月月供：¥{calculateMonthlyMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType).toLocaleString()}</label>
           </div>
         </div>
       </div>
@@ -332,14 +393,16 @@ function FinancialCalculator() {
               <option value="permanent">永久失业（之后年份无工资）</option>
             </select>
           </div>
-          <div className="form-group">
-            <label>失业持续月数（临时失业时有效）</label>
-            <input
-              type="number"
-              value={unemploymentDuration}
-              onChange={(e) => setUnemploymentDuration(Number(e.target.value))}
-            />
-          </div>
+          {unemploymentType === 'temporary' && (
+            <div className="form-group">
+              <label>失业持续月数</label>
+              <input
+                type="number"
+                value={unemploymentDuration}
+                onChange={(e) => setUnemploymentDuration(Number(e.target.value))}
+              />
+            </div>
+          )}
         </div>
       </div>
 
