@@ -106,35 +106,43 @@ function FinancialCalculator() {
     const months = years * 12
     const startMonth = year * 12
     let annualMortgage = 0
+    let currentBalance = remainingBalance
 
-    if (type === 'equal_payment') {
-      // 等额本息 - 每月还款相同
-      const monthlyPayment = calculateMonthlyMortgage(total, rate, years, type)
+    for (let month = 0; month < 12; month++) {
+      const currentMonth = startMonth + month
+      if (currentMonth >= months) break // 超出房贷期限
+      if (currentBalance <= 0) break // 已还清
 
-      // 计算当年需要还多少个月
-      for (let month = 0; month < 12; month++) {
-        const currentMonth = startMonth + month
-        if (currentMonth >= months) break // 超出房贷期限
-        if (remainingBalance <= 0) break // 已还清
-
-        const payment = Math.min(monthlyPayment, remainingBalance)
-        annualMortgage += payment
+      let payment, interest, principal
+      if (type === 'equal_payment') {
+        // 等额本息 - 每月还款相同
+        const monthlyPayment = calculateMonthlyMortgage(total, rate, years, type)
+        interest = currentBalance * monthlyRate
+        principal = monthlyPayment - interest
+        // 确保不超过剩余本金
+        if (principal > currentBalance) {
+          principal = currentBalance
+          interest = 0
+        }
+        payment = principal + interest
+      } else {
+        // 等额本金 - 每月本金相同，利息递减
+        const monthlyPrincipal = total / months
+        interest = currentBalance * monthlyRate
+        principal = monthlyPrincipal
+        if (principal > currentBalance) {
+          principal = currentBalance
+          interest = 0
+        }
+        payment = principal + interest
       }
-      return annualMortgage
-    } else {
-      // 等额本金 - 每月本金相同，利息递减
-      for (let month = 0; month < 12; month++) {
-        const currentMonth = startMonth + month
-        if (currentMonth >= months) break // 超出房贷期限
-        if (remainingBalance <= 0) break // 已还清
 
-        const principal = total / months
-        const interest = remainingBalance * monthlyRate
-        const payment = Math.min(principal + interest, remainingBalance)
-        annualMortgage += payment
-      }
-      return annualMortgage
+      payment = Math.min(payment, currentBalance)
+      annualMortgage += payment
+      currentBalance -= principal
     }
+
+    return { annualMortgage, remainingBalance: currentBalance }
   }
 
   const calculatePrediction = () => {
@@ -174,12 +182,16 @@ function FinancialCalculator() {
       // 房贷计算
       let annualMortgage = 0
       if (remainingMortgage > 0) {
-        annualMortgage = calculateAnnualMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType, year, remainingMortgage)
-        remainingMortgage = Math.max(0, remainingMortgage - annualMortgage)
+        const { annualMortgage: mortgagePayment, remainingBalance: newRemainingBalance } = calculateAnnualMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType, year, remainingMortgage)
+        annualMortgage = mortgagePayment
+        if (newRemainingBalance === 0 && remainingMortgage > 0) {
+          console.log(`房贷在第${year}年（年龄${currentAge + year}岁）还清`)
+        }
+        remainingMortgage = newRemainingBalance
       }
 
-      // 投资收益（基于当前资产）
-      const investmentReturn = assets * investmentReturnRate / 100
+      // 投资收益（基于当前资产）- 资产为负数时无投资收益
+      const investmentReturn = assets > 0 ? assets * investmentReturnRate / 100 : 0
 
       // 工资收入调整（支持自定义调整）
       let actualSalaryIncome = annualSalaryIncome
@@ -222,7 +234,8 @@ function FinancialCalculator() {
         assetChange: Math.round(assetChange),
         isUnemployed: unemploymentYear && year >= parseInt(unemploymentYear) - currentAge,
         isPermanentlyUnemployed: unemploymentType === 'permanent' && year >= parseInt(unemploymentYear) - currentAge,
-        hasCustomAdjustment: !!yearAdjustment
+        hasCustomAdjustment: !!yearAdjustment,
+        isNegativeAssets: assets < 0
       })
     }
 

@@ -37,23 +37,58 @@ function FinancialChart({ prediction }) {
           padding: '12px',
           border: '1px solid #ddd',
           borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          maxWidth: '400px'
         }}>
-          <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>第{data.year}年（{data.age}岁）</p>
-          <p>工资收入: {formatCurrency(data.salaryIncome)}</p>
-          <p>投资收入: <span className="positive">{formatCurrency(data.investmentIncome)}</span></p>
-          <p>总收入: <span className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(data.totalIncome)}</span></p>
-          <p>支出: {formatCurrency(data.expenses)}</p>
-          <p>房贷: {formatCurrency(data.mortgage)}</p>
-          <p>可投资: <span className={data.investable >= 0 ? 'positive' : 'negative'}>{formatCurrency(data.investable)}</span></p>
-          <p>总资产: <span className={data.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }}>{formatCurrency(data.assets)}</span></p>
-          {data.isUnemployed && (
-            <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '8px' }}>
-              {data.isPermanentlyUnemployed ? '🚫 永久失业（无工资收入）' : '⚠️ 失业年（工资收入为0）'}
+          <p style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '1.1rem' }}>第{data.year}年（{data.age}岁）</p>
+          
+          <div style={{ marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+            <p style={{ marginBottom: '4px' }}><strong>工资收入:</strong> {formatCurrency(data.salaryIncome)}</p>
+            <p style={{ marginBottom: '4px' }}><strong>投资收入:</strong> <span className="positive">{formatCurrency(data.investmentIncome)}</span></p>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '2px' }}>
+              计算公式: {data.assets > 0 ? `资产(${formatCurrency(data.assets)}) × 投资收益率` : '资产为负，无投资收益'}
             </p>
+          </div>
+          
+          <div style={{ marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee' }}>
+            <p style={{ marginBottom: '4px' }}><strong>年度支出:</strong> {formatCurrency(data.expenses)}</p>
+            <p style={{ marginBottom: '4px' }}><strong>年度房贷:</strong> {formatCurrency(data.mortgage)}</p>
+            <p style={{ marginBottom: '4px' }}><strong>可投资金额:</strong> <span className={data.investable >= 0 ? 'positive' : 'negative'}>{formatCurrency(data.investable)}</span></p>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '2px' }}>
+              计算公式: 工资收入 - 房贷 - 支出
+            </p>
+          </div>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <p style={{ marginBottom: '4px' }}><strong>总收入:</strong> <span className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(data.totalIncome)}</span></p>
+            <p style={{ marginBottom: '4px' }}><strong>投资收益:</strong> <span className="positive">{formatCurrency(data.investmentReturn)}</span></p>
+            <p style={{ marginBottom: '4px' }}><strong>资产变化:</strong> <span className={data.assetChange >= 0 ? 'positive' : 'negative'}>{formatCurrency(data.assetChange)}</span></p>
+            <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '2px' }}>
+              计算公式: 可投资金额 + 投资收益
+            </p>
+          </div>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <p style={{ marginBottom: '4px' }}><strong>总资产:</strong> <span className={data.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }}>{formatCurrency(data.assets)}</span></p>
+            {data.isNegativeAssets && (
+              <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '4px', padding: '4px 8px', background: '#f8d7da', borderRadius: '4px' }}>
+                ⚠️ 斩杀线警告：总资产为负（负债）！
+              </p>
+            )}
+          </div>
+          
+          {data.isUnemployed && (
+            <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
+              <p style={{ color: '#dc3545', fontWeight: 'bold' }}>
+                {data.isPermanentlyUnemployed ? '🚫 永久失业（无工资收入）' : '⚠️ 失业年（工资收入为0）'}
+              </p>
+            </div>
           )}
+          
           {data.hasCustomAdjustment && !data.isUnemployed && (
-            <p style={{ color: '#ffc107', fontWeight: 'bold', marginTop: '8px' }}>📝 自定义调整年</p>
+            <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
+              <p style={{ color: '#ffc107', fontWeight: 'bold' }}>📝 自定义调整年</p>
+            </div>
           )}
         </div>
       )
@@ -151,22 +186,28 @@ function FinancialChart({ prediction }) {
                   <td>{item.year}</td>
                   <td>{item.age}岁</td>
                   <td>{formatCurrency(item.salaryIncome)}</td>
-                  <td className="positive">{formatCurrency(item.investmentIncome)}</td>
+                  <td className="positive" title={`投资收入 = ${item.assets > 0 ? `总资产(${formatCurrency(item.assets)}) × 投资收益率` : '资产为负，无投资收益'}`}>
+                    {formatCurrency(item.investmentIncome)}
+                  </td>
                   <td className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(item.totalIncome)}</td>
                   <td>{formatCurrency(item.expenses)}</td>
                   <td>{formatCurrency(item.mortgage)}</td>
-                  <td className={item.investable >= 0 ? 'positive' : 'negative'}>
+                  <td className={item.investable >= 0 ? 'positive' : 'negative'} title="可投资金额 = 工资收入 - 房贷 - 支出">
                     {formatCurrency(item.investable)}
                   </td>
-                  <td className="positive">{formatCurrency(item.investmentReturn)}</td>
-                  <td className={item.assetChange >= 0 ? 'positive' : 'negative'}>
+                  <td className="positive" title="投资收益 = 投资收入（与投资收入列相同）">
+                    {formatCurrency(item.investmentReturn)}
+                  </td>
+                  <td className={item.assetChange >= 0 ? 'positive' : 'negative'} title="资产变化 = 可投资金额 + 投资收益">
                     {formatCurrency(item.assetChange)}
                   </td>
-                  <td className={item.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }}>
+                  <td className={item.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }} title={`总资产 = 上年总资产 + 资产变化${item.isNegativeAssets ? ' (斩杀线：资产为负)' : ''}`}>
                     {formatCurrency(item.assets)}
                   </td>
                   <td>
-                    {item.isPermanentlyUnemployed ? (
+                    {item.isNegativeAssets ? (
+                      <span style={{ color: '#dc3545', fontWeight: 'bold', background: '#f8d7da', padding: '2px 6px', borderRadius: '4px' }}>⚡ 斩杀线</span>
+                    ) : item.isPermanentlyUnemployed ? (
                       <span style={{ color: '#dc3545', fontWeight: 'bold' }}>🚫 永久失业</span>
                     ) : item.isUnemployed ? (
                       <span style={{ color: '#dc3545', fontWeight: 'bold' }}>⚠️ 失业</span>
