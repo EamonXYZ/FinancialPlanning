@@ -35,6 +35,10 @@
 - 详细的年度财务数据表格
 - 关键财务指标总结
 
+## 在线访问
+
+🌐 **GitHub Pages**: https://eamonxyz.github.io/FinancialPlanning/
+
 ## 安装和运行
 
 ### 1. 安装依赖
