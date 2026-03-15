@@ -101,7 +101,7 @@ function FinancialCalculator() {
   }
 
   // 计算年度房贷
-  const calculateAnnualMortgage = (total, rate, years, type, year) => {
+  const calculateAnnualMortgage = (total, rate, years, type, year, remainingBalance) => {
     const monthlyRate = rate / 100 / 12
     const months = years * 12
     const startMonth = year * 12
@@ -110,14 +110,28 @@ function FinancialCalculator() {
     if (type === 'equal_payment') {
       // 等额本息 - 每月还款相同
       const monthlyPayment = calculateMonthlyMortgage(total, rate, years, type)
-      return Math.min(monthlyPayment * 12, total)
+
+      // 计算当年需要还多少个月
+      for (let month = 0; month < 12; month++) {
+        const currentMonth = startMonth + month
+        if (currentMonth >= months) break // 超出房贷期限
+        if (remainingBalance <= 0) break // 已还清
+
+        const payment = Math.min(monthlyPayment, remainingBalance)
+        annualMortgage += payment
+      }
+      return annualMortgage
     } else {
       // 等额本金 - 每月本金相同，利息递减
-      for (let month = 0; month < 12 && startMonth + month < months; month++) {
+      for (let month = 0; month < 12; month++) {
+        const currentMonth = startMonth + month
+        if (currentMonth >= months) break // 超出房贷期限
+        if (remainingBalance <= 0) break // 已还清
+
         const principal = total / months
-        const remaining = total - principal * (startMonth + month)
-        const interest = remaining * monthlyRate
-        annualMortgage += principal + interest
+        const interest = remainingBalance * monthlyRate
+        const payment = Math.min(principal + interest, remainingBalance)
+        annualMortgage += payment
       }
       return annualMortgage
     }
@@ -160,7 +174,7 @@ function FinancialCalculator() {
       // 房贷计算
       let annualMortgage = 0
       if (remainingMortgage > 0) {
-        annualMortgage = calculateAnnualMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType, year)
+        annualMortgage = calculateAnnualMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType, year, remainingMortgage)
         remainingMortgage = Math.max(0, remainingMortgage - annualMortgage)
       }
 
