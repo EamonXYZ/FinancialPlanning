@@ -9,6 +9,7 @@ function InvestmentAdvice({ prediction }) {
   const finalAssets = predictions[predictions.length - 1].assets
   const averageInvestable = predictions.reduce((sum, p) => sum + Math.max(0, p.investable), 0) / predictions.length
   const totalInvestmentReturn = predictions.reduce((sum, p) => sum + p.investmentReturn, 0)
+  const totalSalaryIncome = predictions.reduce((sum, p) => sum + p.salaryIncome, 0)
 
   // 计算风险承受能力
   const riskTolerance = calculateRiskTolerance(predictions)
@@ -31,12 +32,12 @@ function InvestmentAdvice({ prediction }) {
           <div className="summary-item-value">¥{Math.round(averageInvestable).toLocaleString()}</div>
         </div>
         <div className="summary-item positive">
+          <div className="summary-item-label">累计工资收入</div>
+          <div className="summary-item-value">¥{Math.round(totalSalaryIncome).toLocaleString()}</div>
+        </div>
+        <div className="summary-item positive">
           <div className="summary-item-label">累计投资收益</div>
           <div className="summary-item-value">¥{Math.round(totalInvestmentReturn).toLocaleString()}</div>
-        </div>
-        <div className="summary-item {monthlyNetIncome > 0 ? 'positive' : 'warning'}">
-          <div className="summary-item-label">月度净收入</div>
-          <div className="summary-item-value">¥{monthlyNetIncome.toLocaleString()}</div>
         </div>
       </div>
 

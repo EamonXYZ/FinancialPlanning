@@ -40,13 +40,14 @@ function FinancialChart({ prediction }) {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>第{data.year}年（{data.age}岁）</p>
-          <p>收入: {formatCurrency(data.income)}</p>
+          <p>工资收入: {formatCurrency(data.salaryIncome)}</p>
+          <p>投资收入: <span className="positive">{formatCurrency(data.investmentIncome)}</span></p>
+          <p>总收入: <span className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(data.totalIncome)}</span></p>
           <p>支出: {formatCurrency(data.expenses)}</p>
           <p>房贷: {formatCurrency(data.mortgage)}</p>
           <p>可投资: <span className={data.investable >= 0 ? 'positive' : 'negative'}>{formatCurrency(data.investable)}</span></p>
-          <p>投资收益: <span className="positive">{formatCurrency(data.investmentReturn)}</span></p>
           <p>总资产: <span className={data.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }}>{formatCurrency(data.assets)}</span></p>
-          {data.isUnemployed && <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '8px' }}>⚠️ 失业影响年</p>}
+          {data.isUnemployed && <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '8px' }}>⚠️ 失业年（工资收入为0）</p>}
         </div>
       )
     }
@@ -107,7 +108,8 @@ function FinancialChart({ prediction }) {
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="income" fill="#667eea" name="年度收入" />
+            <Bar dataKey="salaryIncome" fill="#667eea" name="工资收入" />
+            <Bar dataKey="investmentIncome" fill="#17a2b8" name="投资收入" />
             <Bar dataKey="expenses" fill="#dc3545" name="年度支出" />
             <Bar dataKey="mortgage" fill="#ffc107" name="年度房贷" />
             <Bar dataKey="investable" fill="#28a745" name="年度可投资" />
@@ -124,7 +126,9 @@ function FinancialChart({ prediction }) {
               <tr>
                 <th>年份</th>
                 <th>年龄</th>
-                <th>年度收入</th>
+                <th>工资收入</th>
+                <th>投资收入</th>
+                <th>总收入</th>
                 <th>年度支出</th>
                 <th>年度房贷</th>
                 <th>可投资</th>
@@ -139,7 +143,9 @@ function FinancialChart({ prediction }) {
                 <tr key={index}>
                   <td>{item.year}</td>
                   <td>{item.age}岁</td>
-                  <td>{formatCurrency(item.income)}</td>
+                  <td>{formatCurrency(item.salaryIncome)}</td>
+                  <td className="positive">{formatCurrency(item.investmentIncome)}</td>
+                  <td className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(item.totalIncome)}</td>
                   <td>{formatCurrency(item.expenses)}</td>
                   <td>{formatCurrency(item.mortgage)}</td>
                   <td className={item.investable >= 0 ? 'positive' : 'negative'}>
@@ -185,9 +191,9 @@ function FinancialChart({ prediction }) {
             </div>
           </div>
           <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px' }}>
-            <div style={{ color: '#666', fontSize: '0.9rem' }}>累计收入</div>
+            <div style={{ color: '#666', fontSize: '0.9rem' }}>累计工资收入</div>
             <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#28a745' }}>
-              {formatCurrency(predictions.reduce((sum, p) => sum + p.income, 0))}
+              {formatCurrency(predictions.reduce((sum, p) => sum + p.salaryIncome, 0))}
             </div>
           </div>
           <div style={{ padding: '16px', background: '#f8f9fa', borderRadius: '8px' }}>

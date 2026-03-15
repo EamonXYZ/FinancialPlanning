@@ -75,8 +75,8 @@ function FinancialCalculator() {
     for (let year = 0; year <= years; year++) {
       const age = currentAge + year
 
-      // 收入增长
-      const annualIncome = monthlyIncome * 12 * Math.pow(1 + incomeGrowthRate / 100, year)
+      // 工资收入（考虑增长）
+      const annualSalaryIncome = monthlyIncome * 12 * Math.pow(1 + incomeGrowthRate / 100, year)
 
       // 支出通胀
       const annualExpenses = totalMonthlyExpenses * 12 * Math.pow(1 + inflationRate / 100, year)
@@ -88,17 +88,20 @@ function FinancialCalculator() {
         remainingMortgage = Math.max(0, remainingMortgage - (annualMortgage - remainingMortgage / mortgageYears))
       }
 
-      // 失业风险处理
-      let actualIncome = annualIncome
+      // 投资收益（基于当前资产）
+      const investmentReturn = assets * investmentReturnRate / 100
+
+      // 失业风险处理：失业时工资收入为0
+      let actualSalaryIncome = annualSalaryIncome
       if (unemploymentYear && year === parseInt(unemploymentYear) - currentAge) {
-        actualIncome = annualIncome * (1 - unemploymentDuration / 12)
+        actualSalaryIncome = 0
       }
 
-      // 每年可投资金额
-      const annualInvestable = (monthlyIncome * 12) - annualMortgage - annualExpenses
+      // 总收入 = 工资收入 + 投资收入
+      const totalIncome = actualSalaryIncome + investmentReturn
 
-      // 投资收益
-      const investmentReturn = assets * investmentReturnRate / 100
+      // 每年可投资金额 = 工资收入 - 房贷 - 支出
+      const annualInvestable = actualSalaryIncome - annualMortgage - annualExpenses
 
       // 年度资产变化
       const assetChange = annualInvestable + investmentReturn
@@ -107,7 +110,9 @@ function FinancialCalculator() {
       predictions.push({
         year: year,
         age: age,
-        income: Math.round(actualIncome),
+        salaryIncome: Math.round(actualSalaryIncome),
+        investmentIncome: Math.round(investmentReturn),
+        totalIncome: Math.round(totalIncome),
         expenses: Math.round(annualExpenses),
         mortgage: Math.round(annualMortgage),
         investmentReturn: Math.round(investmentReturn),
