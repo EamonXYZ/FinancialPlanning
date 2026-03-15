@@ -47,7 +47,14 @@ function FinancialChart({ prediction }) {
           <p>房贷: {formatCurrency(data.mortgage)}</p>
           <p>可投资: <span className={data.investable >= 0 ? 'positive' : 'negative'}>{formatCurrency(data.investable)}</span></p>
           <p>总资产: <span className={data.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }}>{formatCurrency(data.assets)}</span></p>
-          {data.isUnemployed && <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '8px' }}>⚠️ 失业年（工资收入为0）</p>}
+          {data.isUnemployed && (
+            <p style={{ color: '#dc3545', fontWeight: 'bold', marginTop: '8px' }}>
+              {data.isPermanentlyUnemployed ? '🚫 永久失业（无工资收入）' : '⚠️ 失业年（工资收入为0）'}
+            </p>
+          )}
+          {data.hasCustomAdjustment && !data.isUnemployed && (
+            <p style={{ color: '#ffc107', fontWeight: 'bold', marginTop: '8px' }}>📝 自定义调整年</p>
+          )}
         </div>
       )
     }
@@ -159,8 +166,12 @@ function FinancialChart({ prediction }) {
                     {formatCurrency(item.assets)}
                   </td>
                   <td>
-                    {item.isUnemployed ? (
+                    {item.isPermanentlyUnemployed ? (
+                      <span style={{ color: '#dc3545', fontWeight: 'bold' }}>🚫 永久失业</span>
+                    ) : item.isUnemployed ? (
                       <span style={{ color: '#dc3545', fontWeight: 'bold' }}>⚠️ 失业</span>
+                    ) : item.hasCustomAdjustment ? (
+                      <span style={{ color: '#ffc107' }}>📝 调整</span>
                     ) : item.investable < 0 ? (
                       <span style={{ color: '#dc3545' }}>❌ 收支为负</span>
                     ) : (

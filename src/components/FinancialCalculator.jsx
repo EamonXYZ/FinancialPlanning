@@ -33,6 +33,10 @@ function FinancialCalculator() {
   // 风险模拟
   const [unemploymentYear, setUnemploymentYear] = useState('')
   const [unemploymentDuration, setUnemploymentDuration] = useState(6)
+  const [unemploymentType, setUnemploymentType] = useState('temporary') // temporary: 临时失业, permanent: 永久失业
+
+  // 年度收支调整
+  const [yearlyAdjustments, setYearlyAdjustments] = useState([])
 
   // 计算结果
   const [prediction, setPrediction] = useState(null)
@@ -52,6 +56,25 @@ function FinancialCalculator() {
     setExpenseItems(
       expenseItems.map(item =>
         item.id === id ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  const addYearlyAdjustment = () => {
+    setYearlyAdjustments([
+      ...yearlyAdjustments,
+      { id: Date.now(), year: 0, salary: '', extraExpense: '' }
+    ])
+  }
+
+  const removeYearlyAdjustment = (id) => {
+    setYearlyAdjustments(yearlyAdjustments.filter(adj => adj.id !== id))
+  }
+
+  const updateYearlyAdjustment = (id, field, value) => {
+    setYearlyAdjustments(
+      yearlyAdjustments.map(adj =>
+        adj.id === id ? { ...adj, [field]: value } : adj
       )
     )
   }
@@ -79,7 +102,12 @@ function FinancialCalculator() {
       const annualSalaryIncome = monthlyIncome * 12 * Math.pow(1 + incomeGrowthRate / 100, year)
 
       // 支出通胀
-      const annualExpenses = totalMonthlyExpenses * 12 * Math.pow(1 + inflationRate / 100, year)
+      let annualExpenses = totalMonthlyExpenses * 12 * Math.pow(1 + inflationRate / 100, year)
+
+      // 应用额外支出调整
+      if (yearAdjustment && yearAdjustment.extraExpense !== '') {
+        annualExpenses += yearAdjustment.extraExpense
+      }
 
       // 房贷计算
       let annualMortgage = 0
@@ -91,10 +119,24 @@ function FinancialCalculator() {
       // 投资收益（基于当前资产）
       const investmentReturn = assets * investmentReturnRate / 100
 
-      // 失业风险处理：失业时工资收入为0
+      // 查找该年份的收入调整
+      const yearAdjustment = yearlyAdjustments.find(adj => adj.year === year)
+
+      // 工资收入调整（支持自定义调整）
       let actualSalaryIncome = annualSalaryIncome
-      if (unemploymentYear && year === parseInt(unemploymentYear) - currentAge) {
-        actualSalaryIncome = 0
+      if (yearAdjustment && yearAdjustment.salary !== '') {
+        actualSalaryIncome = yearAdjustment.salary === 0 ? 0 : yearAdjustment.salary
+      }
+
+      // 失业风险处理
+      if (unemploymentYear && year >= parseInt(unemploymentYear) - currentAge) {
+        if (unemploymentType === 'permanent') {
+          // 永久失业：工资收入为0，投资收入也大幅减少
+          actualSalaryIncome = 0
+        } else if (year === parseInt(unemploymentYear) - currentAge) {
+          // 临时失业：失业年工资收入为0
+          actualSalaryIncome = 0
+        }
       }
 
       // 总收入 = 工资收入 + 投资收入
@@ -119,7 +161,9 @@ function FinancialCalculator() {
         investable: Math.round(annualInvestable),
         assets: Math.round(assets),
         assetChange: Math.round(assetChange),
-        isUnemployed: unemploymentYear && year === parseInt(unemploymentYear) - currentAge
+        isUnemployed: unemploymentYear && year >= parseInt(unemploymentYear) - currentAge,
+        isPermanentlyUnemployed: unemploymentType === 'permanent' && year >= parseInt(unemploymentYear) - currentAge,
+        hasCustomAdjustment: !!yearAdjustment
       })
     }
 
@@ -279,7 +323,17 @@ function FinancialCalculator() {
             />
           </div>
           <div className="form-group">
-            <label>失业持续月数</label>
+            <label>失业类型</label>
+            <select
+              value={unemploymentType}
+              onChange={(e) => setUnemploymentType(e.target.value)}
+            >
+              <option value="temporary">临时失业（仅当年）</option>
+              <option value="permanent">永久失业（之后年份无工资）</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>失业持续月数（临时失业时有效）</label>
             <input
               type="number"
               value={unemploymentDuration}
@@ -287,6 +341,52 @@ function FinancialCalculator() {
             />
           </div>
         </div>
+      </div>
+
+      {/* 年度收支调整卡片 */}
+      <div className="card">
+        <h2 className="card-title">📝 年度收支调整</h2>
+        <p style={{ color: '#666', marginBottom: '16px', fontSize: '0.95rem' }}>
+          可以为特定年份设置不同的工资收入和支出，留空则使用默认计算值
+        </p>
+
+        <div className="expense-list">
+          {yearlyAdjustments.map((adjustment, index) => (
+            <div key={adjustment.id} className="expense-item">
+              <input
+                type="number"
+                placeholder="第几年"
+                value={adjustment.year}
+                onChange={(e) => updateYearlyAdjustment(adjustment.id, 'year', Number(e.target.value))}
+                style={{ flex: 1 }}
+              />
+              <input
+                type="number"
+                placeholder="工资收入(留空=默认)"
+                value={adjustment.salary === '' ? '' : adjustment.salary}
+                onChange={(e) => updateYearlyAdjustment(adjustment.id, 'salary', e.target.value === '' ? '' : Number(e.target.value))}
+                style={{ flex: 2 }}
+              />
+              <input
+                type="number"
+                placeholder="额外支出(留空=默认)"
+                value={adjustment.extraExpense === '' ? '' : adjustment.extraExpense}
+                onChange={(e) => updateYearlyAdjustment(adjustment.id, 'extraExpense', e.target.value === '' ? '' : Number(e.target.value))}
+                style={{ flex: 2 }}
+              />
+              <button
+                className="expense-remove"
+                onClick={() => removeYearlyAdjustment(adjustment.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn btn-secondary" onClick={addYearlyAdjustment}>
+          + 添加年度调整
+        </button>
       </div>
 
       {/* 计算按钮 */}

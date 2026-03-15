@@ -140,20 +140,30 @@ function generateInvestmentAllocation(averageInvestable, riskTolerance) {
 function generateFinancialAdvice(predictions, monthlyNetIncome) {
   const adviceList = []
 
+  const hasPermanentUnemployment = predictions.some(p => p.isPermanentlyUnemployed)
+  const hasTemporaryUnemployment = predictions.some(p => p.isUnemployed && !p.isPermanentlyUnemployed)
+
+  if (hasPermanentUnemployment) {
+    adviceList.push('🚫 存在永久失业风险，建议建立充足的紧急备用金，并考虑降低生活标准')
+    adviceList.push('🚫 永久失业后主要依靠投资收益，建议优先配置稳健型资产')
+  } else if (hasTemporaryUnemployment) {
+    adviceList.push('⚠️ 考虑到失业风险，建议预留6-12个月的生活费作为紧急备用金')
+  }
+
   if (monthlyNetIncome > 0) {
     adviceList.push('✅ 当前收支状况良好，建议将每月结余的30%-50%用于投资')
   } else {
     adviceList.push('⚠️ 当前收支为负，建议先优化支出结构，减少非必要开支')
   }
 
-  const hasUnemployment = predictions.some(p => p.isUnemployed)
-  if (hasUnemployment) {
-    adviceList.push('⚠️ 考虑到失业风险，建议预留6-12个月的生活费作为紧急备用金')
-  }
-
   const negativeInvestableYears = predictions.filter(p => p.investable < 0).length
   if (negativeInvestableYears > 0) {
     adviceList.push(`⚠️ 预测期中有${negativeInvestableYears}年收支为负，建议提前规划应对方案`)
+  }
+
+  const hasCustomAdjustments = predictions.some(p => p.hasCustomAdjustment)
+  if (hasCustomAdjustments) {
+    adviceList.push('📝 已设置年度收支调整，请根据实际情况定期更新')
   }
 
   adviceList.push('💡 建议定期（每半年）重新评估财务状况，调整投资策略')
