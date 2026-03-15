@@ -167,9 +167,6 @@ function FinancialCalculator() {
       // 投资收益（基于当前资产）
       const investmentReturn = assets * investmentReturnRate / 100
 
-      // 查找该年份的收入调整
-      const yearAdjustment = yearlyAdjustments.find(adj => adj.year === year)
-
       // 工资收入调整（支持自定义调整）
       let actualSalaryIncome = annualSalaryIncome
       if (yearAdjustment && yearAdjustment.salary !== '') {
