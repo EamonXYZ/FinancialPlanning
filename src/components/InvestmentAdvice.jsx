@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-function InvestmentAdvice({ prediction }) {
+function InvestmentAdvice({ prediction, investmentAllocations }) {
   if (!prediction) return null
 
   const { predictions, totalExpenses, monthlyNetIncome } = prediction
@@ -17,31 +17,12 @@ function InvestmentAdvice({ prediction }) {
   // 生成投资建议
   const investmentAllocation = generateInvestmentAllocation(averageInvestable, riskTolerance)
 
-  // 理财配置
-  const defaultFourThreeTwoOneAllocation = [
-    { id: 1, name: '现金', percentage: 5, expectedReturn: 2, color: '#28a745', description: '流动性高，应急备用' },
-    { id: 2, name: '黄金', percentage: 10, expectedReturn: 3, color: '#ffc107', description: '抗通胀，分散风险' },
-    { id: 3, name: '高分红的股票', percentage: 50, expectedReturn: 8, color: '#dc3545', description: '高分红，稳定现金流' },
-    { id: 4, name: '中证红利', percentage: 30, expectedReturn: 7, color: '#17a2b8', description: '指数基金，分散投资' },
-    { id: 5, name: '货币基金', percentage: 5, expectedReturn: 3.5, color: '#6f42c1', description: '低风险，稳健收益' }
-  ]
-
-  const [fourThreeTwoOneAllocation, setFourThreeTwoOneAllocation] = useState(defaultFourThreeTwoOneAllocation)
   const [selectedYear, setSelectedYear] = useState(0);
-
-  // 更新配置项
-  const updateAllocationItem = (id, field, value) => {
-    setFourThreeTwoOneAllocation(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    )
-  }
 
   // 计算基于选中资产的配置金额和预期收益
   const selectedAssets = selectedYear === 0 ? finalAssets : predictions[selectedYear - 1].assets
   const hasPositiveAssets = selectedAssets > 0
-  const allocationDetails = fourThreeTwoOneAllocation.map(item => {
+  const allocationDetails = investmentAllocations.map(item => {
     const amount = selectedAssets * item.percentage / 100
     const expectedAnnualReturn = amount * item.expectedReturn / 100
     return {
@@ -96,7 +77,7 @@ function InvestmentAdvice({ prediction }) {
           </span>
         </div>
         <p style={{ color: '#666', marginBottom: '16px', fontSize: '0.95rem' }}>
-          根据您的总资产，按照5%现金、10%黄金、50%高分红的股票、30%中证红利、5%货币基金的比例进行配置。您可以调整比例和期望收益率。
+          基于您的自定义投资配置，显示不同年份的资产分配情况。您可以在"投资配置"卡片中添加、删除和修改投资资产。
         </p>
         
         {hasPositiveAssets ? (
@@ -122,25 +103,11 @@ function InvestmentAdvice({ prediction }) {
                         </div>
                         <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>{item.description}</div>
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <input
-                          type="number"
-                          value={item.percentage}
-                          onChange={(e) => updateAllocationItem(item.id, 'percentage', parseFloat(e.target.value) || 0)}
-                          style={{ width: '80px', textAlign: 'right', padding: '4px 8px', border: '1px solid #ced4da', borderRadius: '4px' }}
-                          min="0"
-                          step="0.1"
-                        />
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '500' }}>
+                        {item.percentage.toFixed(1)}%
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <input
-                          type="number"
-                          value={item.expectedReturn}
-                          onChange={(e) => updateAllocationItem(item.id, 'expectedReturn', parseFloat(e.target.value) || 0)}
-                          style={{ width: '80px', textAlign: 'right', padding: '4px 8px', border: '1px solid #ced4da', borderRadius: '4px' }}
-                          min="0"
-                          step="0.1"
-                        />
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '500' }}>
+                        {item.expectedReturn.toFixed(1)}%
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right', fontWeight: '500' }}>
                         ¥{Math.round(item.amount).toLocaleString()}
@@ -343,7 +310,7 @@ function generateFinancialAdvice(predictions, monthlyNetIncome) {
   }
 
   // 投资收入计算说明
-  adviceList.push('📊 投资收入计算规则：总资产为正时按投资收益率计算，总资产为负时无投资收益（斩杀线）')
+  adviceList.push('📊 投资收入计算规则：调整后资产为正时按投资配置加权平均收益率计算，调整后资产为负时无投资收益（斩杀线）')
 
   adviceList.push('💡 建议定期（每半年）重新评估财务状况，调整投资策略')
   adviceList.push('💡 保持多元化的投资组合，分散单一资产风险')

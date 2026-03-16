@@ -29,7 +29,6 @@ function FinancialCalculator() {
 
   // 经济参数
   const [inflationRate, setInflationRate] = useState(3)
-  const [investmentReturnRate, setInvestmentReturnRate] = useState(8)
 
   // 风险模拟
   const [unemploymentYear, setUnemploymentYear] = useState('')
@@ -38,6 +37,15 @@ function FinancialCalculator() {
 
   // 年度收支调整
   const [yearlyAdjustments, setYearlyAdjustments] = useState([])
+
+  // 投资配置
+  const [investmentAllocations, setInvestmentAllocations] = useState([
+    { id: 1, name: '现金', percentage: 5, expectedReturn: 1, color: '#28a745', description: '流动性高，应急备用' },
+    { id: 2, name: '黄金', percentage: 10, expectedReturn: 3, color: '#ffc107', description: '抗通胀，分散风险' },
+    { id: 3, name: '高分红的股票', percentage: 50, expectedReturn: 6, color: '#dc3545', description: '高分红，稳定现金流' },
+    { id: 4, name: '中证红利', percentage: 30, expectedReturn: 5, color: '#17a2b8', description: '指数基金，分散投资' },
+    { id: 5, name: '货币基金', percentage: 5, expectedReturn: 1.5, color: '#6f42c1', description: '低风险，稳健收益' }
+  ])
 
   // 计算结果
   const [prediction, setPrediction] = useState(null)
@@ -76,6 +84,26 @@ function FinancialCalculator() {
     setYearlyAdjustments(
       yearlyAdjustments.map(adj =>
         adj.id === id ? { ...adj, [field]: value } : adj
+      )
+    )
+  }
+
+  // 投资配置管理函数
+  const addInvestmentAllocation = () => {
+    setInvestmentAllocations([
+      ...investmentAllocations,
+      { id: Date.now(), name: '', percentage: 0, expectedReturn: 0, color: '#6c757d', description: '' }
+    ])
+  }
+
+  const removeInvestmentAllocation = (id) => {
+    setInvestmentAllocations(investmentAllocations.filter(item => item.id !== id))
+  }
+
+  const updateInvestmentAllocation = (id, field, value) => {
+    setInvestmentAllocations(
+      investmentAllocations.map(item =>
+        item.id === id ? { ...item, [field]: value } : item
       )
     )
   }
@@ -162,6 +190,12 @@ function FinancialCalculator() {
     const monthlyMortgage = calculateMonthlyMortgage(mortgageTotal, mortgageRate, mortgageYears, mortgageType)
     const monthlyNetIncome = monthlyIncome - monthlyMortgage - totalMonthlyExpenses
 
+    // 计算加权平均投资收益率（基于投资配置）
+    const totalPercentage = investmentAllocations.reduce((sum, item) => sum + item.percentage, 0)
+    const weightedAverageReturn = totalPercentage > 0 
+      ? investmentAllocations.reduce((sum, item) => sum + (item.percentage * item.expectedReturn), 0) / totalPercentage
+      : 0 // 如果没有配置，则收益率为0
+
     for (let year = 0; year <= years; year++) {
       const age = currentAge + year
 
@@ -190,9 +224,6 @@ function FinancialCalculator() {
         remainingMortgage = newRemainingBalance
       }
 
-      // 投资收益（基于当前资产）- 资产为负数时无投资收益
-      const investmentReturn = assets > 0 ? assets * investmentReturnRate / 100 : 0
-
       // 工资收入调整（支持自定义调整）
       let actualSalaryIncome = annualSalaryIncome
       if (yearAdjustment && yearAdjustment.salary !== '') {
@@ -210,11 +241,34 @@ function FinancialCalculator() {
         }
       }
 
-      // 总收入 = 工资收入 + 投资收入
-      const totalIncome = actualSalaryIncome + investmentReturn
-
       // 每年可投资金额 = 工资收入 - 房贷 - 支出
       const annualInvestable = actualSalaryIncome - annualMortgage - annualExpenses
+
+      // 投资收益计算：基于可投资金额调整后的资产
+      // 如果可投资金额为负（从资产中取钱），则投资收益基于取钱后的剩余资产计算
+      const assetsForInvestment = assets + annualInvestable
+      const investmentReturn = assetsForInvestment > 0 ? assetsForInvestment * weightedAverageReturn / 100 : 0
+
+      // 计算每个资产类别的投资收益细分
+      const investmentBreakdown = []
+      if (assetsForInvestment > 0 && totalPercentage > 0) {
+        investmentAllocations.forEach(item => {
+          const allocationPercentage = item.percentage / totalPercentage
+          const investmentAmount = assetsForInvestment * allocationPercentage
+          const itemReturn = investmentAmount * item.expectedReturn / 100
+          investmentBreakdown.push({
+            name: item.name,
+            percentage: item.percentage,
+            expectedReturn: item.expectedReturn,
+            investmentAmount: Math.round(investmentAmount),
+            return: Math.round(itemReturn),
+            color: item.color
+          })
+        })
+      }
+
+      // 总收入 = 工资收入 + 投资收入
+      const totalIncome = actualSalaryIncome + investmentReturn
 
       // 年度资产变化
       const assetChange = annualInvestable + investmentReturn
@@ -230,6 +284,8 @@ function FinancialCalculator() {
         mortgage: Math.round(annualMortgage),
         investmentReturn: Math.round(investmentReturn),
         investable: Math.round(annualInvestable),
+        assetsForInvestment: Math.round(assetsForInvestment),
+        investmentBreakdown: investmentBreakdown,
         assets: Math.round(assets),
         assetChange: Math.round(assetChange),
         isUnemployed: unemploymentYear && year >= parseInt(unemploymentYear) - currentAge,
@@ -292,15 +348,77 @@ function FinancialCalculator() {
               onChange={(e) => setIncomeGrowthRate(Number(e.target.value))}
             />
           </div>
+
+        </div>
+      </div>
+
+      {/* 投资配置卡片 */}
+      <div className="card">
+        <h2 className="card-title">📊 投资配置</h2>
+        <div className="form-grid">
           <div className="form-group">
-            <label>预期投资收益率（%）</label>
-            <input
-              type="number"
-              value={investmentReturnRate}
-              onChange={(e) => setInvestmentReturnRate(Number(e.target.value))}
-            />
+            <label>配置比例总和: {investmentAllocations.reduce((sum, item) => sum + item.percentage, 0).toFixed(1)}%</label>
+          </div>
+          <div className="form-group">
+            <label>加权平均收益率: {
+              investmentAllocations.length > 0 ? 
+                (investmentAllocations.reduce((sum, item) => sum + (item.percentage * item.expectedReturn), 0) / 
+                 investmentAllocations.reduce((sum, item) => sum + item.percentage, 0)).toFixed(2) : 0
+            }%</label>
           </div>
         </div>
+
+        <div className="expense-list">
+          {investmentAllocations.map(item => (
+            <div key={item.id} className="expense-item">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                <div style={{ width: '12px', height: '12px', backgroundColor: item.color, borderRadius: '2px' }}></div>
+                <input
+                  type="text"
+                  placeholder="资产名称"
+                  value={item.name}
+                  onChange={(e) => updateInvestmentAllocation(item.id, 'name', e.target.value)}
+                  style={{ flex: 1 }}
+                />
+              </div>
+              <input
+                type="number"
+                placeholder="比例%"
+                value={item.percentage}
+                onChange={(e) => updateInvestmentAllocation(item.id, 'percentage', parseFloat(e.target.value) || 0)}
+                style={{ width: '80px' }}
+                min="0"
+                step="0.1"
+              />
+              <input
+                type="number"
+                placeholder="预期收益%"
+                value={item.expectedReturn}
+                onChange={(e) => updateInvestmentAllocation(item.id, 'expectedReturn', parseFloat(e.target.value) || 0)}
+                style={{ width: '80px' }}
+                min="0"
+                step="0.1"
+              />
+              <input
+                type="text"
+                placeholder="描述"
+                value={item.description}
+                onChange={(e) => updateInvestmentAllocation(item.id, 'description', e.target.value)}
+                style={{ flex: 2 }}
+              />
+              <button
+                className="expense-remove"
+                onClick={() => removeInvestmentAllocation(item.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn btn-secondary" onClick={addInvestmentAllocation}>
+          + 添加投资资产
+        </button>
       </div>
 
       {/* 房贷信息卡片 */}
@@ -486,7 +604,7 @@ function FinancialCalculator() {
       {/* 计算结果 */}
       {prediction && (
         <>
-          <InvestmentAdvice prediction={prediction} />
+          <InvestmentAdvice prediction={prediction} investmentAllocations={investmentAllocations} />
           <FinancialChart prediction={prediction} />
         </>
       )}

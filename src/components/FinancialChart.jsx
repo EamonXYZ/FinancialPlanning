@@ -46,7 +46,7 @@ function FinancialChart({ prediction }) {
             <p style={{ marginBottom: '4px' }}><strong>工资收入:</strong> {formatCurrency(data.salaryIncome)}</p>
             <p style={{ marginBottom: '4px' }}><strong>投资收入:</strong> <span className="positive">{formatCurrency(data.investmentIncome)}</span></p>
             <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '2px' }}>
-              计算公式: {data.assets > 0 ? `资产(${formatCurrency(data.assets)}) × 投资收益率` : '资产为负，无投资收益'}
+              计算公式: {data.assets + data.investable > 0 ? `调整后资产(${formatCurrency(data.assets + data.investable)}) × 投资配置加权平均收益率` : '调整后资产为负，无投资收益'}
             </p>
           </div>
           
@@ -174,6 +174,7 @@ function FinancialChart({ prediction }) {
                 <th>年度支出</th>
                 <th>年度房贷</th>
                 <th>可投资</th>
+                <th>在投资的金额</th>
                 <th>投资收益</th>
                 <th>资产变化</th>
                 <th>总资产</th>
@@ -185,23 +186,26 @@ function FinancialChart({ prediction }) {
                 <tr key={index}>
                   <td>{item.year}</td>
                   <td>{item.age}岁</td>
-                  <td>{formatCurrency(item.salaryIncome)}</td>
-                  <td className="positive" title={`投资收入 = ${item.assets > 0 ? `总资产(${formatCurrency(item.assets)}) × 投资收益率` : '资产为负，无投资收益'}`}>
+                  <td title={`工资收入 = ${formatCurrency(item.salaryIncome)}${item.isUnemployed ? ' (失业年工资为0)' : ''}${item.hasCustomAdjustment ? ' (自定义调整)' : ''}`}>{formatCurrency(item.salaryIncome)}</td>
+                  <td className="positive" title={`投资收入 = ${item.assets + item.investable > 0 ? `调整后资产(${formatCurrency(item.assets + item.investable)}) × 投资配置加权平均收益率 = ${formatCurrency(item.investmentIncome)}` : '调整后资产为负，无投资收益'}`}>
                     {formatCurrency(item.investmentIncome)}
                   </td>
-                  <td className="positive" style={{ fontWeight: 'bold' }}>{formatCurrency(item.totalIncome)}</td>
-                  <td>{formatCurrency(item.expenses)}</td>
-                  <td>{formatCurrency(item.mortgage)}</td>
-                  <td className={item.investable >= 0 ? 'positive' : 'negative'} title="可投资金额 = 工资收入 - 房贷 - 支出">
+                  <td className="positive" style={{ fontWeight: 'bold' }} title={`总收入 = 工资收入(${formatCurrency(item.salaryIncome)}) + 投资收入(${formatCurrency(item.investmentIncome)})`}>{formatCurrency(item.totalIncome)}</td>
+                  <td title={`年度支出 = ${formatCurrency(item.expenses)}${item.hasCustomAdjustment ? ' (含自定义额外支出)' : ''}`}>{formatCurrency(item.expenses)}</td>
+                  <td title={`年度房贷 = ${formatCurrency(item.mortgage)}`}>{formatCurrency(item.mortgage)}</td>
+                  <td className={item.investable >= 0 ? 'positive' : 'negative'} title={`可投资金额 = 工资收入(${formatCurrency(item.salaryIncome)}) - 房贷(${formatCurrency(item.mortgage)}) - 支出(${formatCurrency(item.expenses)}) = ${formatCurrency(item.investable)}`}>
                     {formatCurrency(item.investable)}
                   </td>
-                  <td className="positive" title="投资收益 = 投资收入（与投资收入列相同）">
+                  <td className="positive" title={`在投资的金额 = 年初总资产(${formatCurrency(item.assets - item.assetChange)}) + 可投资金额(${formatCurrency(item.investable)}) = ${formatCurrency(item.assetsForInvestment)}`}>
+                    {formatCurrency(item.assetsForInvestment)}
+                  </td>
+                  <td className="positive" title={`投资收益 = 投资收入 = ${formatCurrency(item.investmentReturn)}${item.investmentBreakdown && item.investmentBreakdown.length > 0 ? '，细分：' + item.investmentBreakdown.map(b => `${b.name}(${formatCurrency(b.return)})`).join('，') : ''}`}>
                     {formatCurrency(item.investmentReturn)}
                   </td>
-                  <td className={item.assetChange >= 0 ? 'positive' : 'negative'} title="资产变化 = 可投资金额 + 投资收益">
+                  <td className={item.assetChange >= 0 ? 'positive' : 'negative'} title={`资产变化 = 可投资金额(${formatCurrency(item.investable)}) + 投资收益(${formatCurrency(item.investmentReturn)}) = ${formatCurrency(item.assetChange)}`}>
                     {formatCurrency(item.assetChange)}
                   </td>
-                  <td className={item.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }} title={`总资产 = 上年总资产 + 资产变化${item.isNegativeAssets ? ' (斩杀线：资产为负)' : ''}`}>
+                  <td className={item.assets >= 0 ? 'positive' : 'negative'} style={{ fontWeight: 'bold' }} title={`总资产 = 上年总资产(${formatCurrency(item.assets - item.assetChange)}) + 资产变化(${formatCurrency(item.assetChange)}) = ${formatCurrency(item.assets)}${item.isNegativeAssets ? ' (斩杀线：资产为负)' : ''}`}>
                     {formatCurrency(item.assets)}
                   </td>
                   <td>
